@@ -23,8 +23,12 @@
 .video-element {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     background: #0f0f1a;
+}
+
+.video-player.local .video-element {
+    object-fit: cover;
 }
 
 .video-label {
