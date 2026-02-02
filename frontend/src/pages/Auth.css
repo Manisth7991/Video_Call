@@ -207,12 +207,27 @@
     border: 1px solid #fecaca;
 }
 
+/* Responsive - Tablet */
+@media (max-width: 768px) {
+    .auth-card {
+        max-width: 360px;
+    }
+
+    .auth-header {
+        padding: 2.25rem 1.5rem 3.25rem;
+    }
+
+    .auth-header h1 {
+        font-size: 1.25rem;
+    }
+}
+
 /* Responsive - Mobile */
 @media (max-width: 480px) {
     .auth-container {
         padding: 0.75rem;
         align-items: flex-start;
-        padding-top: 2rem;
+        padding-top: 1.5rem;
     }
 
     .auth-card {
@@ -221,16 +236,82 @@
     }
 
     .auth-header {
-        padding: 2rem 1.25rem 3rem;
+        padding: 1.75rem 1.25rem 2.75rem;
         border-top-left-radius: 20px;
         border-top-right-radius: 20px;
     }
 
+    .auth-header h1 {
+        font-size: 1.2rem;
+    }
+
     .auth-header::after {
-        height: 40px;
+        height: 35px;
+    }
+
+    .auth-header-back {
+        font-size: 1.1rem;
+        left: 1rem;
     }
 
     .auth-form-body {
         padding: 1.25rem 1.25rem 1.5rem;
+    }
+
+    .auth-form {
+        gap: 0.875rem;
+    }
+
+    .form-group label {
+        font-size: 0.75rem;
+    }
+
+    .form-group input {
+        font-size: 0.95rem;
+        padding: 0.5rem 0;
+    }
+
+    .auth-button {
+        padding: 0.8rem;
+        font-size: 0.95rem;
+        margin-top: 1rem;
+    }
+
+    .auth-footer {
+        margin-top: 1.25rem;
+    }
+
+    .auth-footer p {
+        font-size: 0.8rem;
+    }
+
+    .error-message {
+        padding: 0.625rem 0.875rem;
+        font-size: 0.8rem;
+    }
+}
+
+/* Responsive - Very small phones */
+@media (max-width: 360px) {
+    .auth-container {
+        padding: 0.5rem;
+        padding-top: 1rem;
+    }
+
+    .auth-header {
+        padding: 1.5rem 1rem 2.5rem;
+    }
+
+    .auth-header h1 {
+        font-size: 1.1rem;
+    }
+
+    .auth-form-body {
+        padding: 1rem;
+    }
+
+    .auth-button {
+        padding: 0.7rem;
+        font-size: 0.9rem;
     }
 }

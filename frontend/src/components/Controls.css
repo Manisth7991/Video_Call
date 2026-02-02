@@ -63,19 +63,68 @@
     font-weight: 500;
 }
 
-/* Responsive */
-@media (max-width: 640px) {
-    .controls {
-        gap: 0.75rem;
+/* Responsive - Tablet */
+@media (max-width: 768px) {
+    .controls-container {
+        padding: 0.6rem 0.75rem;
     }
 
     .control-button {
-        padding: 0.75rem 1rem;
-        min-width: 70px;
-        font-size: 1.25rem;
+        padding: 0.65rem 1rem;
+        min-width: 75px;
+        font-size: 1.2rem;
+    }
+}
+
+/* Responsive - Mobile */
+@media (max-width: 640px) {
+    .controls-container {
+        padding: 0.5rem;
+    }
+
+    .controls {
+        gap: 0.5rem;
+    }
+
+    .control-button {
+        padding: 0.6rem 0.75rem;
+        min-width: 65px;
+        font-size: 1.15rem;
+        border-radius: 10px;
     }
 
     .control-label {
-        font-size: 0.625rem;
+        font-size: 0.6rem;
+    }
+}
+
+/* Responsive - Small phones */
+@media (max-width: 400px) {
+    .controls {
+        gap: 0.4rem;
+    }
+
+    .control-button {
+        padding: 0.5rem 0.6rem;
+        min-width: 55px;
+        font-size: 1rem;
+        border-radius: 8px;
+    }
+
+    .control-label {
+        font-size: 0.55rem;
+    }
+}
+
+/* Responsive - Very small phones */
+@media (max-width: 320px) {
+    .control-button {
+        padding: 0.45rem 0.5rem;
+        min-width: 50px;
+        font-size: 0.95rem;
+    }
+
+    .control-label {
+        display: none;
     }
 }
