@@ -32,7 +32,7 @@ const setTokenCookie = (res, token) => {
     res.cookie('token', token, {
         httpOnly: true,          // Prevents JavaScript access (XSS protection)
         secure: isProduction,    // HTTPS only in production
-        sameSite: isProduction ? 'strict' : 'lax', // CSRF protection
+        sameSite: isProduction ? 'none' : 'lax', // 'none' required for cross-origin cookies
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
         path: '/',               // Cookie available across all routes
     });
@@ -46,7 +46,7 @@ const clearTokenCookie = (res) => {
     res.cookie('token', '', {
         httpOnly: true,
         secure: isProduction,
-        sameSite: isProduction ? 'strict' : 'lax',
+        sameSite: isProduction ? 'none' : 'lax', // 'none' required for cross-origin cookies
         maxAge: 0,              // Immediately expire the cookie
         path: '/',
     });
