@@ -15,8 +15,33 @@ const app = express();
 
 // CORS Configuration
 // Allows frontend to make requests with credentials (cookies)
+// Supports multiple Vercel deployment URLs
+const allowedOrigins = [
+    process.env.FRONTEND_URL,
+    'http://localhost:5173',
+    'http://localhost:3000',
+];
+
+// Add Vercel preview URLs pattern
 const corsOptions = {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: function (origin, callback) {
+        // Allow requests with no origin (mobile apps, curl, etc.)
+        if (!origin) return callback(null, true);
+
+        // Check if origin is in allowed list
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+
+        // Allow any Vercel deployment URL for this project
+        if (origin.includes('video-call') && origin.includes('vercel.app')) {
+            return callback(null, true);
+        }
+
+        // Block other origins
+        console.log('CORS blocked origin:', origin);
+        callback(new Error('Not allowed by CORS'));
+    },
     credentials: true, // Allow cookies to be sent
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
