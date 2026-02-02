@@ -226,8 +226,10 @@
 @media (max-width: 480px) {
     .auth-container {
         padding: 0.75rem;
-        align-items: flex-start;
-        padding-top: 1.5rem;
+        align-items: center;
+        min-height: 100vh;
+        min-height: 100dvh;
+        /* Dynamic viewport height for mobile browsers */
     }
 
     .auth-card {
@@ -295,7 +297,6 @@
 @media (max-width: 360px) {
     .auth-container {
         padding: 0.5rem;
-        padding-top: 1rem;
     }
 
     .auth-header {

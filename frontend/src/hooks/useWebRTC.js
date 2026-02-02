@@ -108,9 +108,12 @@ const useWebRTC = () => {
             // Request camera and microphone access
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: {
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 },
+                    width: { ideal: 1280, min: 640 },
+                    height: { ideal: 720, min: 480 },
+                    aspectRatio: { ideal: 16 / 9 },
                     facingMode: 'user', // Front camera on mobile
+                    // Disable auto zoom/crop features that focus on face
+                    resizeMode: 'none',
                 },
                 audio: {
                     echoCancellation: true,
