@@ -1,0 +1,234 @@
+/* Dashboard Page Styles */
+
+.dashboard-container {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header */
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dashboard-header h1 {
+    color: white;
+    font-size: 1.5rem;
+    margin: 0;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.logout-button {
+    padding: 0.5rem 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+}
+
+.logout-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* Main Content */
+.dashboard-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    gap: 2rem;
+}
+
+.dashboard-card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    padding: 2.5rem;
+    width: 100%;
+    max-width: 500px;
+}
+
+.dashboard-card h2 {
+    font-size: 1.5rem;
+    color: #1a1a2e;
+    margin-bottom: 0.5rem;
+}
+
+.dashboard-card>p {
+    color: #6b7280;
+    margin-bottom: 1.5rem;
+}
+
+/* Action Section */
+.action-section {
+    margin-bottom: 1.5rem;
+}
+
+.primary-button {
+    width: 100%;
+    padding: 1rem;
+    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.primary-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(79, 70, 229, 0.3);
+}
+
+.primary-button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.action-description {
+    text-align: center;
+    color: #6b7280;
+    font-size: 0.875rem;
+    margin-top: 0.75rem;
+}
+
+/* Divider */
+.divider {
+    display: flex;
+    align-items: center;
+    margin: 1.5rem 0;
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #e5e7eb;
+}
+
+.divider span {
+    padding: 0 1rem;
+    color: #9ca3af;
+    font-size: 0.875rem;
+}
+
+/* Join Form */
+.join-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.join-form .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.join-form label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+.join-form input {
+    padding: 0.875rem 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.2s ease;
+}
+
+.join-form input:focus {
+    outline: none;
+    border-color: #4f46e5;
+}
+
+.secondary-button {
+    padding: 0.875rem;
+    background: white;
+    color: #4f46e5;
+    border: 2px solid #4f46e5;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.secondary-button:hover:not(:disabled) {
+    background: #4f46e5;
+    color: white;
+}
+
+.secondary-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Error Message */
+.error-message {
+    background-color: #fef2f2;
+    color: #dc2626;
+    padding: 0.875rem 1rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    border: 1px solid #fecaca;
+    margin-bottom: 1rem;
+}
+
+/* Quick Guide */
+.quick-guide {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 500px;
+}
+
+.quick-guide h3 {
+    color: white;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+}
+
+.quick-guide ol {
+    color: rgba(255, 255, 255, 0.7);
+    padding-left: 1.25rem;
+}
+
+.quick-guide li {
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .dashboard-header {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+
+    .dashboard-card {
+        padding: 1.5rem;
+    }
+}
