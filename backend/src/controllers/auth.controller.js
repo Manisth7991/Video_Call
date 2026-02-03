@@ -37,9 +37,11 @@ const register = async (req, res) => {
         setTokenCookie(res, token);
 
         // Send response (without password)
+        // Include token in response body as fallback for cross-origin cookie issues
         res.status(201).json({
             success: true,
             message: 'Registration successful',
+            token, // Token for localStorage fallback
             user: {
                 id: user._id,
                 name: user.name,
@@ -106,9 +108,11 @@ const login = async (req, res) => {
         setTokenCookie(res, token);
 
         // Send response
+        // Include token in response body as fallback for cross-origin cookie issues
         res.status(200).json({
             success: true,
             message: 'Login successful',
+            token, // Token for localStorage fallback
             user: {
                 id: user._id,
                 name: user.name,
@@ -157,8 +161,16 @@ const getMe = async (req, res) => {
             });
         }
 
+        // Generate a fresh token for the user
+        // This ensures localStorage gets updated for cross-origin cookie fallback
+        const token = generateToken(user._id, user.name, user.email);
+
+        // Also refresh the cookie
+        setTokenCookie(res, token);
+
         res.status(200).json({
             success: true,
+            token, // Include token for localStorage fallback
             user: {
                 id: user._id,
                 name: user.name,

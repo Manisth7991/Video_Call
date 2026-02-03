@@ -14,6 +14,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
+import { getAuthToken } from '../api/axios';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
 
@@ -27,6 +28,9 @@ const useSocket = () => {
     useEffect(() => {
         isMountedRef.current = true;
 
+        // Get the auth token for socket authentication
+        const token = getAuthToken();
+
         // Create socket connection with credentials
         const socket = io(SOCKET_URL, {
             withCredentials: true, // Send cookies for authentication
@@ -39,6 +43,10 @@ const useSocket = () => {
             // Disconnect if ping not received
             pingTimeout: 5000,
             pingInterval: 25000,
+            // Pass token via auth for cross-origin fallback
+            auth: {
+                token: token,
+            },
         });
 
         socketRef.current = socket;

@@ -1,7 +1,26 @@
 // Axios Instance Configuration
 // Sets up axios with credentials for cookie-based authentication
+// Also includes Authorization header fallback for cross-origin cookie issues
 
 import axios from 'axios';
+
+// Token storage key for localStorage fallback
+const TOKEN_KEY = 'auth_token';
+
+// Helper functions for token management
+export const setAuthToken = (token) => {
+    if (token) {
+        localStorage.setItem(TOKEN_KEY, token);
+    }
+};
+
+export const getAuthToken = () => {
+    return localStorage.getItem(TOKEN_KEY);
+};
+
+export const removeAuthToken = () => {
+    localStorage.removeItem(TOKEN_KEY);
+};
 
 // Create axios instance with default config
 const api = axios.create({
@@ -14,10 +33,15 @@ const api = axios.create({
 });
 
 // Request Interceptor
-// Can be used to add auth headers or modify requests
+// Adds Authorization header as fallback for cross-origin cookie issues
 api.interceptors.request.use(
     (config) => {
-        // You can add custom logic here if needed
+        // Always add the token to Authorization header as fallback
+        // This handles cases where cross-origin cookies don't work
+        const token = getAuthToken();
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
         return config;
     },
     (error) => {

@@ -3,7 +3,7 @@
 // Provides login, register, logout functions and user state
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import api from '../api/axios';
+import api, { setAuthToken, removeAuthToken } from '../api/axios';
 
 // Create the context
 const AuthContext = createContext(null);
@@ -16,17 +16,26 @@ export const AuthProvider = ({ children }) => {
     const [error, setError] = useState(null);
 
     // Check if user is already authenticated (on app load)
-    // Calls /api/auth/me to verify the cookie-stored JWT
+    // Calls /api/auth/me to verify the cookie-stored JWT or Authorization header
     const checkAuth = useCallback(async () => {
         try {
             setLoading(true);
+
+            // Always try the API call - cookies might work even without localStorage token
+            // This handles users who logged in before the localStorage fallback was added
             const response = await api.get('/auth/me');
 
             if (response.data.success) {
                 setUser(response.data.user);
+                // CRITICAL: Store token from response for future cross-origin requests
+                // This ensures localStorage gets populated for users who only had cookies
+                if (response.data.token) {
+                    setAuthToken(response.data.token);
+                }
             }
         } catch (err) {
-            // Not authenticated - this is expected for new users
+            // Not authenticated - clear token and user state
+            removeAuthToken();
             setUser(null);
         } finally {
             setLoading(false);
@@ -48,6 +57,10 @@ export const AuthProvider = ({ children }) => {
             const response = await api.post('/auth/register', userData);
 
             if (response.data.success) {
+                // Store the token in localStorage as fallback for cross-origin cookie issues
+                if (response.data.token) {
+                    setAuthToken(response.data.token);
+                }
                 setUser(response.data.user);
                 return { success: true };
             }
@@ -70,6 +83,10 @@ export const AuthProvider = ({ children }) => {
             const response = await api.post('/auth/login', credentials);
 
             if (response.data.success) {
+                // Store the token in localStorage as fallback for cross-origin cookie issues
+                if (response.data.token) {
+                    setAuthToken(response.data.token);
+                }
                 setUser(response.data.user);
                 return { success: true };
             }
@@ -83,13 +100,14 @@ export const AuthProvider = ({ children }) => {
     };
 
     // Logout user
-    // Clears the httpOnly cookie on the server
+    // Clears the httpOnly cookie on the server and localStorage token
     const logout = async () => {
         try {
             await api.post('/auth/logout');
         } catch (err) {
             console.error('Logout error:', err);
         } finally {
+            removeAuthToken(); // Clear the localStorage token
             setUser(null);
             setError(null);
         }

@@ -4,12 +4,21 @@ const User = require('../models/User.model');
 
 
 // Middleware to protect routes
-// Extracts JWT from httpOnly cookie and verifies it
+// Extracts JWT from httpOnly cookie OR Authorization header (fallback for cross-origin issues)
 
 const protect = async (req, res, next) => {
     try {
-        // Get token from httpOnly cookie
-        const token = req.cookies.token;
+        // Get token from httpOnly cookie first
+        let token = req.cookies.token;
+
+        // Fallback: Check Authorization header if cookie is not present
+        // This handles cross-origin cookie issues with different domains
+        if (!token && req.headers.authorization) {
+            const authHeader = req.headers.authorization;
+            if (authHeader.startsWith('Bearer ')) {
+                token = authHeader.substring(7); // Remove 'Bearer ' prefix
+            }
+        }
 
         if (!token) {
             return res.status(401).json({
