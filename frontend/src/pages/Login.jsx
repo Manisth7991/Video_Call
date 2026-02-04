@@ -14,7 +14,7 @@ const Login = () => {
     const [formError, setFormError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const { login, error, clearError } = useAuth();
+    const { login, error, clearError, loading } = useAuth();
     const navigate = useNavigate();
 
     // Handle input changes
@@ -36,17 +36,26 @@ const Login = () => {
             return;
         }
 
-        setIsSubmitting(true);
-
-        const result = await login(formData);
-
-        if (result.success) {
-            navigate('/dashboard');
-        } else {
-            setFormError(result.message);
+        // Prevent submission if auth is still loading (e.g., checkAuth running)
+        if (loading) {
+            return;
         }
 
-        setIsSubmitting(false);
+        setIsSubmitting(true);
+
+        try {
+            const result = await login(formData);
+
+            if (result && result.success) {
+                navigate('/dashboard');
+            } else {
+                setFormError(result?.message || 'Login failed. Please try again.');
+            }
+        } catch (err) {
+            setFormError('An unexpected error occurred. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -96,9 +105,9 @@ const Login = () => {
                         <button
                             type="submit"
                             className="auth-button"
-                            disabled={isSubmitting}
+                            disabled={isSubmitting || loading}
                         >
-                            {isSubmitting ? 'Signing in...' : 'Sign In'}
+                            {isSubmitting ? 'Signing in...' : loading ? 'Please wait...' : 'Sign In'}
                         </button>
                     </form>
 

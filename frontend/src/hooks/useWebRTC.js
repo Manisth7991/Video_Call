@@ -18,6 +18,27 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 
+// ========== ADAPTIVE BITRATE CONFIGURATION ==========
+// Bitrate targets (in bps) for different network conditions
+const BITRATE_CONFIG = {
+    START: 3_500_000,      // Start at ~3.5 Mbps
+    MAX_GOOD: 5_000_000,   // Max for good network: 5 Mbps
+    MEDIUM: 2_000_000,     // Medium network: 2 Mbps
+    POOR: 800_000,         // Poor network: 800 kbps
+    TURN_CAP: 1_500_000,   // Cap when using TURN relay: 1.5 Mbps
+};
+
+// Network quality thresholds
+const NETWORK_THRESHOLDS = {
+    GOOD_RTT: 100,         // RTT < 100ms = good
+    MEDIUM_RTT: 250,       // RTT < 250ms = medium
+    GOOD_PACKET_LOSS: 0.02,    // < 2% packet loss = good
+    MEDIUM_PACKET_LOSS: 0.05,  // < 5% packet loss = medium
+};
+
+// Preferred video codecs in order
+const PREFERRED_CODECS = ['video/VP9', 'video/VP8', 'video/H264'];
+
 // STUN servers help discover public IP addresses
 // TURN servers relay traffic when direct peer connection fails
 const ICE_SERVERS = {
@@ -68,6 +89,12 @@ const useWebRTC = () => {
     const onIceCandidateRef = useRef(null);
     // Buffer for ICE candidates that arrive before remote description is set
     const pendingIceCandidatesRef = useRef([]);
+    // Ref for adaptive bitrate interval
+    const bitrateIntervalRef = useRef(null);
+    // Track if we're using TURN relay
+    const isUsingTurnRef = useRef(false);
+    // Current bitrate for logging
+    const currentBitrateRef = useRef(BITRATE_CONFIG.START);
 
     // CLEANUP: Effect to track component mount state
     // This prevents "setState on unmounted component" warnings
@@ -100,6 +127,12 @@ const useWebRTC = () => {
     // CLEANUP: Close and cleanup peer connection
     // This releases network resources and ICE candidates
     const closePeerConnection = useCallback(() => {
+        // Stop adaptive bitrate monitoring
+        if (bitrateIntervalRef.current) {
+            clearInterval(bitrateIntervalRef.current);
+            bitrateIntervalRef.current = null;
+        }
+
         const pc = peerConnectionRef.current;
         if (pc) {
             // Remove all event listeners to prevent memory leaks
@@ -117,16 +150,22 @@ const useWebRTC = () => {
 
             peerConnectionRef.current = null;
         }
+
+        // Reset TURN detection
+        isUsingTurnRef.current = false;
     }, []);
 
     // Initialize media devices (camera + microphone)
+    // Uses high-quality constraints with 1080p ideal, fallback to lower resolutions
     const initializeMedia = useCallback(async () => {
         try {
-            // Request camera and microphone access
+            // Request camera and microphone access with high-quality constraints
+            // Using IDEAL constraints allows browser to negotiate best available
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: {
-                    width: { ideal: 1280, min: 640 },
-                    height: { ideal: 720, min: 480 },
+                    width: { ideal: 1920, min: 640 },   // 1080p ideal, 480p minimum
+                    height: { ideal: 1080, min: 480 },
+                    frameRate: { ideal: 30, min: 15 },  // 30fps ideal
                     aspectRatio: { ideal: 16 / 9 },
                     facingMode: 'user', // Front camera on mobile
                     // Disable auto zoom/crop features that focus on face
@@ -209,13 +248,189 @@ const useWebRTC = () => {
             }
         };
 
-        // Monitor ICE connection state
+        // Monitor ICE connection state and detect TURN usage
         pc.oniceconnectionstatechange = () => {
-            // Monitor ICE connection state changes
+            const state = pc.iceConnectionState;
+
+            // When connected, check if using TURN relay and start adaptive bitrate
+            if (state === 'connected' || state === 'completed') {
+                detectTurnUsage(pc);
+                startAdaptiveBitrate(pc);
+            }
         };
+
+        // Set codec preferences (VP9 > VP8 > H.264)
+        setCodecPreferences(pc);
 
         return pc;
     }, [closePeerConnection, safeSetState]);
+
+    // Detect if connection is using TURN relay (and cap bitrate accordingly)
+    const detectTurnUsage = useCallback(async (pc) => {
+        try {
+            const stats = await pc.getStats();
+            stats.forEach((report) => {
+                if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+                    // Check if local or remote candidate is relay type
+                    stats.forEach((candidateReport) => {
+                        if (candidateReport.id === report.localCandidateId ||
+                            candidateReport.id === report.remoteCandidateId) {
+                            if (candidateReport.candidateType === 'relay') {
+                                isUsingTurnRef.current = true;
+                            }
+                        }
+                    });
+                }
+            });
+        } catch (error) {
+            console.error('[WebRTC] Error detecting TURN usage:', error);
+        }
+    }, []);
+
+    // Set preferred video codecs (VP9 > VP8 > H.264)
+    const setCodecPreferences = useCallback((pc) => {
+        const transceivers = pc.getTransceivers();
+        transceivers.forEach((transceiver) => {
+            if (transceiver.sender && transceiver.sender.track?.kind === 'video') {
+                const capabilities = RTCRtpSender.getCapabilities?.('video');
+                if (capabilities) {
+                    const codecs = capabilities.codecs;
+                    const sortedCodecs = [];
+
+                    // Add codecs in preferred order
+                    for (const preferred of PREFERRED_CODECS) {
+                        const matching = codecs.filter(c => c.mimeType === preferred);
+                        sortedCodecs.push(...matching);
+                    }
+
+                    // Add remaining codecs
+                    const remaining = codecs.filter(c => !PREFERRED_CODECS.includes(c.mimeType));
+                    sortedCodecs.push(...remaining);
+
+                    try {
+                        transceiver.setCodecPreferences(sortedCodecs);
+                    } catch (e) {
+                        // setCodecPreferences may not be supported in all browsers
+                    }
+                }
+            }
+        });
+    }, []);
+
+    // Adaptive bitrate control based on network conditions
+    const startAdaptiveBitrate = useCallback((pc) => {
+        // Clear any existing interval
+        if (bitrateIntervalRef.current) {
+            clearInterval(bitrateIntervalRef.current);
+        }
+
+        // Set initial bitrate
+        applyBitrate(pc, BITRATE_CONFIG.START);
+
+        // Monitor network and adjust bitrate every 3 seconds
+        bitrateIntervalRef.current = setInterval(async () => {
+            try {
+                const stats = await pc.getStats();
+                const networkQuality = analyzeNetworkQuality(stats);
+                const targetBitrate = calculateTargetBitrate(networkQuality);
+
+                // Only log and apply if bitrate changed significantly (>10%)
+                const change = Math.abs(targetBitrate - currentBitrateRef.current) / currentBitrateRef.current;
+                if (change > 0.1) {
+                    applyBitrate(pc, targetBitrate);
+                }
+            } catch (error) {
+                // Connection might be closing, ignore errors
+            }
+        }, 3000);
+    }, []);
+
+    // Analyze network quality from WebRTC stats
+    const analyzeNetworkQuality = useCallback((stats) => {
+        let rtt = 0;
+        let packetsLost = 0;
+        let packetsSent = 0;
+
+        stats.forEach((report) => {
+            if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+                rtt = report.currentRoundTripTime * 1000 || 0; // Convert to ms
+            }
+            if (report.type === 'outbound-rtp' && report.kind === 'video') {
+                packetsSent = report.packetsSent || 0;
+            }
+            if (report.type === 'remote-inbound-rtp' && report.kind === 'video') {
+                packetsLost = report.packetsLost || 0;
+            }
+        });
+
+        const packetLossRate = packetsSent > 0 ? packetsLost / packetsSent : 0;
+
+        return { rtt, packetLossRate };
+    }, []);
+
+    // Calculate target bitrate based on network quality
+    const calculateTargetBitrate = useCallback((networkQuality) => {
+        const { rtt, packetLossRate } = networkQuality;
+
+        let quality = 'good';
+        if (rtt > NETWORK_THRESHOLDS.MEDIUM_RTT || packetLossRate > NETWORK_THRESHOLDS.MEDIUM_PACKET_LOSS) {
+            quality = 'poor';
+        } else if (rtt > NETWORK_THRESHOLDS.GOOD_RTT || packetLossRate > NETWORK_THRESHOLDS.GOOD_PACKET_LOSS) {
+            quality = 'medium';
+        }
+
+        let targetBitrate;
+        switch (quality) {
+            case 'good':
+                targetBitrate = BITRATE_CONFIG.MAX_GOOD;
+                break;
+            case 'medium':
+                targetBitrate = BITRATE_CONFIG.MEDIUM;
+                break;
+            case 'poor':
+            default:
+                targetBitrate = BITRATE_CONFIG.POOR;
+                break;
+        }
+
+        // Cap bitrate if using TURN relay
+        if (isUsingTurnRef.current && targetBitrate > BITRATE_CONFIG.TURN_CAP) {
+            targetBitrate = BITRATE_CONFIG.TURN_CAP;
+        }
+
+        return targetBitrate;
+    }, []);
+
+    // Apply bitrate to video sender (without disabling congestion control)
+    const applyBitrate = useCallback(async (pc, targetBitrate) => {
+        const senders = pc.getSenders();
+        const videoSender = senders.find(s => s.track?.kind === 'video');
+
+        if (!videoSender) return;
+
+        try {
+            const params = videoSender.getParameters();
+            if (!params.encodings || params.encodings.length === 0) {
+                params.encodings = [{}];
+            }
+
+            // Set maxBitrate as a soft cap - WebRTC congestion control still active
+            params.encodings[0].maxBitrate = targetBitrate;
+
+            // For poor network, also reduce framerate
+            if (targetBitrate <= BITRATE_CONFIG.POOR) {
+                params.encodings[0].maxFramerate = 15;
+            } else {
+                // Remove framerate cap for better quality
+                delete params.encodings[0].maxFramerate;
+            }
+
+            await videoSender.setParameters(params);
+            currentBitrateRef.current = targetBitrate;
+        } catch (error) {
+            // Bitrate adjustment failed - WebRTC will use default congestion control
+        }
+    }, []);
 
     // Create WebRTC offer (caller side)
     // SDP offer describes the media capabilities of the caller
@@ -374,14 +589,18 @@ const useWebRTC = () => {
     }, []);
 
     // Toggle audio track
+    // IMPORTANT: Only toggles track.enabled, never reattaches streams
+    // This prevents any possibility of local audio playing back to user
     // @returns {boolean} - New audio state
     const toggleAudio = useCallback(() => {
         if (localStreamRef.current) {
             const audioTrack = localStreamRef.current.getAudioTracks()[0];
             if (audioTrack) {
+                // Toggle enabled state - track stays in stream, just muted/unmuted
                 audioTrack.enabled = !audioTrack.enabled;
-                safeSetState(setIsAudioEnabled, audioTrack.enabled);
-                return audioTrack.enabled;
+                const newState = audioTrack.enabled;
+                safeSetState(setIsAudioEnabled, newState);
+                return newState;
             }
         }
         return isAudioEnabled;
@@ -432,6 +651,14 @@ const useWebRTC = () => {
 
         // STEP 4: Clear pending ICE candidates
         pendingIceCandidatesRef.current = [];
+
+        // STEP 4.5: Stop adaptive bitrate monitoring
+        if (bitrateIntervalRef.current) {
+            clearInterval(bitrateIntervalRef.current);
+            bitrateIntervalRef.current = null;
+        }
+        isUsingTurnRef.current = false;
+        currentBitrateRef.current = BITRATE_CONFIG.START;
 
         // STEP 5: Reset all state to initial values
         // This ensures a clean slate for the next call

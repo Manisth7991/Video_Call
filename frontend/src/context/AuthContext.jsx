@@ -72,14 +72,20 @@ export const AuthProvider = ({ children }) => {
                     setAuthToken(response.data.token);
                 }
                 setUser(response.data.user);
+                setLoading(false);
                 return { success: true };
+            } else {
+                // API returned success: false
+                const message = response.data.message || 'Registration failed';
+                setError(message);
+                setLoading(false);
+                return { success: false, message };
             }
         } catch (err) {
             const message = err.response?.data?.message || 'Registration failed';
             setError(message);
-            return { success: false, message };
-        } finally {
             setLoading(false);
+            return { success: false, message };
         }
     };
 
@@ -98,14 +104,20 @@ export const AuthProvider = ({ children }) => {
                     setAuthToken(response.data.token);
                 }
                 setUser(response.data.user);
+                setLoading(false);
                 return { success: true };
+            } else {
+                // API returned success: false
+                const message = response.data.message || 'Login failed';
+                setError(message);
+                setLoading(false);
+                return { success: false, message };
             }
         } catch (err) {
             const message = err.response?.data?.message || 'Login failed';
             setError(message);
-            return { success: false, message };
-        } finally {
             setLoading(false);
+            return { success: false, message };
         }
     };
 
