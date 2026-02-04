@@ -59,18 +59,7 @@ const startServer = async () => {
 
         // Start listening
         server.listen(PORT, () => {
-            console.log(`
-╔═══════════════════════════════════════════════════════════╗
-║                                                           ║
-║   🚀 Video Call Server Running!                           ║
-║                                                           ║
-║   📍 HTTP Server:  http://localhost:${PORT}                 ║
-║   🔌 Socket.IO:    Enabled                                ║
-║   🗄️  MongoDB:      Connected                              ║
-║   🔒 Auth:         JWT + httpOnly Cookies                 ║
-║                                                           ║
-╚═══════════════════════════════════════════════════════════╝
-      `);
+            console.log(`Server is listening`);
         });
     } catch (error) {
         console.error('❌ Failed to start server:', error);

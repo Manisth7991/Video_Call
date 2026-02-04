@@ -19,8 +19,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 
 // STUN servers help discover public IP addresses
-// These are free Google STUN servers
-// In production, consider using TURN servers for NAT traversal
+// TURN servers relay traffic when direct peer connection fails
 const ICE_SERVERS = {
     iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
@@ -28,6 +27,26 @@ const ICE_SERVERS = {
         { urls: 'stun:stun2.l.google.com:19302' },
         { urls: 'stun:stun3.l.google.com:19302' },
         { urls: 'stun:stun4.l.google.com:19302' },
+        {
+            urls: 'turn:global.relay.metered.ca:80',
+            username: 'c4377e702032cc59c45e1205',
+            credential: 'BFsu8ViH2WVzegL3',
+        },
+        {
+            urls: 'turn:global.relay.metered.ca:80?transport=tcp',
+            username: 'c4377e702032cc59c45e1205',
+            credential: 'BFsu8ViH2WVzegL3',
+        },
+        {
+            urls: 'turn:global.relay.metered.ca:443',
+            username: 'c4377e702032cc59c45e1205',
+            credential: 'BFsu8ViH2WVzegL3',
+        },
+        {
+            urls: 'turns:global.relay.metered.ca:443?transport=tcp',
+            username: 'c4377e702032cc59c45e1205',
+            credential: 'BFsu8ViH2WVzegL3',
+        },
     ],
 };
 
