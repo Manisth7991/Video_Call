@@ -93,7 +93,6 @@ const useWebRTC = () => {
             stream.getTracks().forEach((track) => {
                 // Stop each track individually
                 track.stop();
-                console.log(`🛑 Stopped ${track.kind} track: ${track.label}`);
             });
         }
     }, []);
@@ -114,7 +113,6 @@ const useWebRTC = () => {
             // Close the connection if not already closed
             if (pc.signalingState !== 'closed') {
                 pc.close();
-                console.log('🔌 Peer connection closed');
             }
 
             peerConnectionRef.current = null;
@@ -147,7 +145,6 @@ const useWebRTC = () => {
             safeSetState(setIsAudioEnabled, true);
             safeSetState(setIsVideoEnabled, true);
 
-            console.log('📹 Media initialized successfully');
             return stream;
         } catch (error) {
             console.error('Failed to get user media:', error);
@@ -180,13 +177,11 @@ const useWebRTC = () => {
         // At this point, localStreamRef.current is guaranteed to exist
         localStreamRef.current.getTracks().forEach((track) => {
             pc.addTrack(track, localStreamRef.current);
-            console.log(`➕ Added ${track.kind} track to peer connection`);
         });
 
         // Handle incoming remote tracks
         // This fires when the remote peer adds their media tracks
         pc.ontrack = (event) => {
-            console.log('📥 Received remote track:', event.track.kind);
             const [stream] = event.streams;
             remoteStreamRef.current = stream;
             safeSetState(setRemoteStream, stream);
@@ -196,7 +191,6 @@ const useWebRTC = () => {
         // ICE candidates are used to establish the connection path
         pc.onicecandidate = (event) => {
             if (event.candidate) {
-                console.log('🧊 New ICE candidate generated');
                 // Call the callback if set (will emit to socket)
                 if (onIceCandidateRef.current) {
                     onIceCandidateRef.current(event.candidate);
@@ -207,18 +201,17 @@ const useWebRTC = () => {
         // Monitor connection state changes
         pc.onconnectionstatechange = () => {
             const state = pc.connectionState;
-            console.log('📡 Connection state:', state);
             safeSetState(setConnectionState, state);
 
             // Handle disconnection states
             if (state === 'disconnected' || state === 'failed' || state === 'closed') {
-                console.log('⚠️ Connection lost or closed');
+                // Connection lost or closed
             }
         };
 
         // Monitor ICE connection state
         pc.oniceconnectionstatechange = () => {
-            console.log('🧊 ICE connection state:', pc.iceConnectionState);
+            // Monitor ICE connection state changes
         };
 
         return pc;
@@ -258,7 +251,6 @@ const useWebRTC = () => {
             // Set as local description
             await pc.setLocalDescription(offer);
 
-            console.log('📤 Created offer (CALLER role)');
             return offer;
         } catch (error) {
             console.error('Error creating offer:', error);
@@ -273,13 +265,11 @@ const useWebRTC = () => {
 
         const candidates = pendingIceCandidatesRef.current;
         if (candidates.length > 0) {
-            console.log(`🧊 Flushing ${candidates.length} pending ICE candidates`);
             pendingIceCandidatesRef.current = [];
 
             for (const candidate of candidates) {
                 try {
                     await pc.addIceCandidate(new RTCIceCandidate(candidate));
-                    console.log('🧊 Added buffered ICE candidate');
                 } catch (error) {
                     if (error.name !== 'InvalidStateError') {
                         console.error('Error adding buffered ICE candidate:', error);
@@ -327,7 +317,6 @@ const useWebRTC = () => {
             // Set as local description
             await pc.setLocalDescription(answer);
 
-            console.log('📤 Created answer (JOINER role)');
             return answer;
         } catch (error) {
             console.error('Error handling offer:', error);
@@ -348,7 +337,6 @@ const useWebRTC = () => {
             // Only set remote description if we haven't already
             if (pc.signalingState === 'have-local-offer') {
                 await pc.setRemoteDescription(new RTCSessionDescription(answer));
-                console.log('📥 Set remote description (answer)');
             }
 
             // Flush any pending ICE candidates now that remote description is set
@@ -365,21 +353,18 @@ const useWebRTC = () => {
         try {
             const pc = peerConnectionRef.current;
             if (!pc) {
-                console.log('🧊 Buffering ICE candidate (no peer connection yet)');
                 pendingIceCandidatesRef.current.push(candidate);
                 return;
             }
 
             // Buffer candidate if remote description is not set yet
             if (!pc.remoteDescription) {
-                console.log('🧊 Buffering ICE candidate (no remote description yet)');
                 pendingIceCandidatesRef.current.push(candidate);
                 return;
             }
 
             // Remote description is set, add candidate immediately
             await pc.addIceCandidate(new RTCIceCandidate(candidate));
-            console.log('🧊 Added ICE candidate');
         } catch (error) {
             // Ignore errors for candidates that arrive after connection is established
             if (error.name !== 'InvalidStateError') {
@@ -427,8 +412,6 @@ const useWebRTC = () => {
     //    with subsequent calls
     // 4. State: Stale state can cause bugs when starting new calls
     const cleanup = useCallback(() => {
-        console.log('🧹 Starting WebRTC cleanup...');
-
         // STEP 1: Stop all local media tracks
         // This releases the camera and microphone hardware
         if (localStreamRef.current) {
@@ -457,15 +440,11 @@ const useWebRTC = () => {
         safeSetState(setIsAudioEnabled, true);
         safeSetState(setIsVideoEnabled, true);
         safeSetState(setConnectionState, 'new');
-
-        console.log('✅ WebRTC cleanup complete - ready for new call');
     }, [stopMediaTracks, closePeerConnection, safeSetState]);
 
     // CLEANUP: Handle peer disconnection gracefully
     // Called when remote peer leaves unexpectedly
     const handlePeerDisconnect = useCallback(() => {
-        console.log('👋 Handling peer disconnect...');
-
         // Clear remote stream but keep local stream active
         if (remoteStreamRef.current) {
             remoteStreamRef.current = null;
@@ -474,8 +453,6 @@ const useWebRTC = () => {
 
         // Reset connection state
         safeSetState(setConnectionState, 'disconnected');
-
-        console.log('✅ Peer disconnect handled');
     }, [safeSetState]);
 
     // Set callback for ICE candidates

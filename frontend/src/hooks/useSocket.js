@@ -53,7 +53,6 @@ const useSocket = () => {
 
         // Connection successful
         const handleConnect = () => {
-            console.log('🔌 Socket connected:', socket.id);
             if (isMountedRef.current) {
                 setIsConnected(true);
                 setConnectionError(null);
@@ -61,16 +60,9 @@ const useSocket = () => {
         };
 
         // Disconnection handler
-        // Logs the reason for debugging
         const handleDisconnect = (reason) => {
-            console.log('🔌 Socket disconnected:', reason);
             if (isMountedRef.current) {
                 setIsConnected(false);
-            }
-
-            // If the server initiated disconnect, it won't try to reconnect
-            if (reason === 'io server disconnect') {
-                console.log('⚠️ Server initiated disconnect - will not auto-reconnect');
             }
         };
 
@@ -85,7 +77,6 @@ const useSocket = () => {
 
         // Reconnection successful
         const handleReconnect = (attemptNumber) => {
-            console.log('🔌 Socket reconnected after', attemptNumber, 'attempts');
             if (isMountedRef.current) {
                 setIsConnected(true);
                 setConnectionError(null);
@@ -120,7 +111,6 @@ const useSocket = () => {
         // 2. Event listeners: Can cause memory leaks and zombie callbacks
         // 3. Reconnection: May try to reconnect to a component that no longer exists
         return () => {
-            console.log('🧹 Cleaning up socket connection...');
             isMountedRef.current = false;
 
             // Remove all event listeners first
@@ -134,7 +124,6 @@ const useSocket = () => {
             // Disconnect the socket
             if (socket.connected) {
                 socket.disconnect();
-                console.log('✅ Socket disconnected gracefully');
             }
 
             // Clear the reference
@@ -147,7 +136,6 @@ const useSocket = () => {
     const disconnect = useCallback(() => {
         if (socketRef.current?.connected) {
             socketRef.current.disconnect();
-            console.log('🔌 Socket manually disconnected');
         }
     }, []);
 
@@ -156,7 +144,6 @@ const useSocket = () => {
     const reconnect = useCallback(() => {
         if (socketRef.current && !socketRef.current.connected) {
             socketRef.current.connect();
-            console.log('🔌 Attempting socket reconnection...');
         }
     }, []);
 

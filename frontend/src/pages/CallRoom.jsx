@@ -113,12 +113,9 @@ const CallRoom = () => {
     const performCleanup = useCallback(() => {
         // Prevent multiple cleanup calls
         if (cleanupPerformedRef.current) {
-            console.log('⏭️ Cleanup already performed, skipping...');
             return;
         }
         cleanupPerformedRef.current = true;
-
-        console.log('🧹 Performing comprehensive cleanup...');
 
         // STEP 1: Notify server we're leaving the room
         // Using ref to ensure we have the latest socket instance
@@ -128,7 +125,6 @@ const CallRoom = () => {
         if (currentSocket && currentRoomId) {
             try {
                 currentSocket.emit('leave-room', { roomId: currentRoomId });
-                console.log('📤 Sent leave-room event');
             } catch (e) {
                 console.error('Error emitting leave-room:', e);
             }
@@ -136,8 +132,6 @@ const CallRoom = () => {
 
         // STEP 2: Cleanup WebRTC resources (camera, mic, peer connection)
         cleanup();
-
-        console.log('✅ Comprehensive cleanup complete');
     }, [cleanup]);
 
     // Leave the call and navigate back to dashboard
@@ -151,8 +145,6 @@ const CallRoom = () => {
     // This ensures cleanup happens even if user closes the tab
     useEffect(() => {
         const handleBeforeUnload = (event) => {
-            console.log('🚪 Page unload detected - cleaning up...');
-
             // Perform synchronous cleanup for beforeunload
             const currentSocket = socketRef.current;
             const currentRoomId = roomIdRef.current;
@@ -184,11 +176,10 @@ const CallRoom = () => {
     useEffect(() => {
         const handleVisibilityChange = () => {
             if (document.hidden) {
-                console.log('👁️ Tab hidden - call continues in background');
                 // Optional: Could pause video here to save bandwidth
                 // The audio continues so the call isn't interrupted
             } else {
-                console.log('👁️ Tab visible again');
+                // Tab visible again
             }
         };
 
@@ -231,7 +222,6 @@ const CallRoom = () => {
 
         // CLEANUP: On unmount, perform full cleanup
         return () => {
-            console.log('🔄 Component unmounting - performing cleanup...');
             performCleanup();
         };
     }, [socket, isConnected, roomId, initializeMedia, performCleanup]);
@@ -258,23 +248,19 @@ const CallRoom = () => {
 
             // GUARD: Never set remoteUser to our own identity
             if (odtId === currentUser.id) {
-                console.warn(`⚠️ [${source}] Blocked attempt to set remoteUser to self (${userName})`);
                 return false;
             }
 
             // GUARD: If identity is already locked, don't overwrite
             if (remoteUserLockedRef.current) {
-                console.log(`🔒 [${source}] Identity already locked, ignoring update for: ${userName}`);
                 return false;
             }
 
             setRemoteUser({ odtId, userName });
-            console.log(`👤 [${source}] Setting remoteUser: ${userName} (ID: ${odtId})`);
 
             // Lock identity if this is a locking event (user-joined or room-users)
             if (canLock) {
                 remoteUserLockedRef.current = true;
-                console.log(`🔒 [${source}] Identity LOCKED to: ${userName}`);
             }
 
             return true;
@@ -287,11 +273,8 @@ const CallRoom = () => {
         // IDENTITY: Contains the JOINING user's info (not ours)
         // ACTION: Set them as remoteUser, lock identity, create and send offer
         const handleUserJoined = async ({ odtId, userName }) => {
-            console.log(`👋 [user-joined] User joined: ${userName} (ID: ${odtId})`);
-
             // Set our role as CALLER (we were in room first, other user joined)
             roleRef.current = 'caller';
-            console.log('🎭 Role assigned: CALLER (will create offer)');
 
             // Set the joining user as our remote user and LOCK the identity
             if (safeSetRemoteUser({ odtId, userName }, 'user-joined', true)) {
@@ -300,7 +283,6 @@ const CallRoom = () => {
                 const offer = await createOffer();
                 if (offer) {
                     socket.emit('offer', { offer, roomId });
-                    console.log('📤 Offer sent to room');
                 }
             }
         };
@@ -313,30 +295,18 @@ const CallRoom = () => {
         // ACTION: DO NOT update remoteUser here (should already be set from room-users)
         //         Just handle the offer and send answer
         const handleReceiveOffer = async ({ offer, from, userName }) => {
-            console.log(`📥 [offer] Received offer from: ${userName} (ID: ${from})`);
-
-            // Verify we're the JOINER
-            if (roleRef.current !== 'joiner') {
-                console.warn(`⚠️ [offer] Unexpected offer - current role: ${roleRef.current}`);
-            }
-
             // IDENTITY FALLBACK (SECONDARY SOURCE):
             // If remoteUser is still null AND identity is not locked,
             // use the offer's sender info as a fallback.
             // This handles race conditions where room-users event was missed.
             if (!remoteUserLockedRef.current) {
-                console.log(`🔄 [offer] FALLBACK: Identity not set from room-users, using offer metadata`);
-                const applied = safeSetRemoteUser({ odtId: from, userName }, 'offer-fallback', true);
-                if (applied) {
-                    console.log(`✅ [offer] Fallback identity applied: ${userName}`);
-                }
+                safeSetRemoteUser({ odtId: from, userName }, 'offer-fallback', true);
             }
 
             // JOINER: Handle offer and create answer
             const answer = await handleOffer(offer);
             if (answer) {
                 socket.emit('answer', { answer, to: from, roomId });
-                console.log('📤 Answer sent to caller');
             }
         };
 
@@ -348,27 +318,15 @@ const CallRoom = () => {
         // ACTION: DO NOT update remoteUser here (should already be set from user-joined)
         //         Just handle the answer to complete connection
         const handleReceiveAnswer = async ({ answer, from, userName }) => {
-            console.log(`📥 [answer] Received answer from: ${userName} (ID: ${from})`);
-
-            // Verify we're the CALLER
-            if (roleRef.current !== 'caller') {
-                console.warn(`⚠️ [answer] Unexpected answer - current role: ${roleRef.current}`);
-            }
-
             // IDENTITY FALLBACK (SECONDARY SOURCE):
             // If remoteUser is still null AND identity is not locked,
             // use the answer's sender info as a fallback.
             // This handles race conditions where user-joined event was missed.
             if (!remoteUserLockedRef.current) {
-                console.log(`🔄 [answer] FALLBACK: Identity not set from user-joined, using answer metadata`);
-                const applied = safeSetRemoteUser({ odtId: from, userName }, 'answer-fallback', true);
-                if (applied) {
-                    console.log(`✅ [answer] Fallback identity applied: ${userName}`);
-                }
+                safeSetRemoteUser({ odtId: from, userName }, 'answer-fallback', true);
             }
 
             await handleAnswer(answer);
-            console.log('✅ Answer processed, connection establishing...');
         };
 
         // EVENT: ice-candidate
@@ -383,7 +341,6 @@ const CallRoom = () => {
         // Triggered when the remote user leaves the call
         // ACTION: Clear remoteUser and unlock identity for potential new user
         const handleUserLeft = ({ odtId, userName }) => {
-            console.log(`👋 [user-left] User left: ${userName} (ID: ${odtId})`);
             setRemoteUser(null);
             // Unlock identity so a new user can join
             remoteUserLockedRef.current = false;
@@ -400,8 +357,6 @@ const CallRoom = () => {
         //
         // NOTE: JOINER does NOT create offer - waits for CALLER to send offer
         const handleRoomUsers = async ({ participants }) => {
-            console.log(`📋 [room-users] Existing participants:`, participants);
-
             if (participants && participants.length > 0) {
                 // Filter out ourselves (extra safety)
                 const others = participants.filter(p => p.odtId !== currentUser.id);
@@ -409,7 +364,6 @@ const CallRoom = () => {
                 if (others.length > 0) {
                     // Set our role as JOINER (room already had participants)
                     roleRef.current = 'joiner';
-                    console.log('🎭 Role assigned: JOINER (will wait for offer)');
 
                     const existingUser = others[0];
                     // Set remoteUser and LOCK the identity
@@ -421,12 +375,7 @@ const CallRoom = () => {
                     // JOINER: Create peer connection but DO NOT create offer
                     // Wait for the CALLER to send us an offer
                     createPeerConnection();
-                    console.log('⏳ Peer connection ready, waiting for offer from CALLER...');
-                } else {
-                    console.log('📋 [room-users] No other participants - we are first in room');
                 }
-            } else {
-                console.log('📋 [room-users] Empty room - we are first in room');
             }
         };
 
@@ -440,23 +389,16 @@ const CallRoom = () => {
         // EVENT: user-toggle-media
         // Triggered when remote user mutes/unmutes audio or video
         const handleUserToggleMedia = ({ odtId, type, enabled }) => {
-            console.log(`🔄 [user-toggle-media] Remote user toggled ${type}: ${enabled}`);
+            // Remote user toggled media
         };
 
         // EVENT: disconnect
         // Triggered on socket disconnection
         const handleDisconnect = (reason) => {
-            console.log('⚠️ [disconnect] Socket disconnected:', reason);
-
             if (reason === 'io server disconnect') {
                 setError('Disconnected from server');
-            } else if (reason === 'transport close' || reason === 'ping timeout') {
-                console.log('Network issue - waiting for reconnection...');
             }
         };
-
-        // Log current user identity for debugging
-        console.log(`🔐 Current user identity: ${currentUser.name} (ID: ${currentUser.id})`);
 
         // Register event listeners
         socket.on('user-joined', handleUserJoined);
@@ -489,7 +431,6 @@ const CallRoom = () => {
 
         // Set the callback that will be called when ICE candidates are generated
         setOnIceCandidate((candidate) => {
-            console.log('📤 Emitting ICE candidate via socket');
             socket.emit('ice-candidate', {
                 candidate,
                 roomId,

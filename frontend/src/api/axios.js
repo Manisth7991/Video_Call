@@ -63,7 +63,6 @@ api.interceptors.response.use(
             // Unauthorized - token expired or invalid
             if (status === 401) {
                 // Could trigger logout or redirect here
-                console.warn('Unauthorized request - token may be expired');
             }
 
             // Server error
