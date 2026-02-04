@@ -21,8 +21,18 @@ export const AuthProvider = ({ children }) => {
         try {
             setLoading(true);
 
-            // Always try the API call - cookies might work even without localStorage token
-            // This handles users who logged in before the localStorage fallback was added
+            // Check if there's a token in localStorage first
+            const token = localStorage.getItem('auth_token');
+
+            // Only make the API call if a token exists
+            // This prevents 401 errors on first visit
+            if (!token) {
+                setUser(null);
+                setLoading(false);
+                return;
+            }
+
+            // Try the API call with the token
             const response = await api.get('/auth/me');
 
             if (response.data.success) {
