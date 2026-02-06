@@ -16,7 +16,7 @@ const Register = () => {
     const [formError, setFormError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const { register, error, clearError } = useAuth();
+    const { register, error, clearError, actionLoading } = useAuth();
     const navigate = useNavigate();
 
     // Handle input changes
@@ -45,6 +45,11 @@ const Register = () => {
 
         if (formData.password !== formData.confirmPassword) {
             setFormError('Passwords do not match');
+            return;
+        }
+
+        // Prevent double submission
+        if (actionLoading || isSubmitting) {
             return;
         }
 
@@ -146,9 +151,9 @@ const Register = () => {
                         <button
                             type="submit"
                             className="auth-button"
-                            disabled={isSubmitting}
+                            disabled={isSubmitting || actionLoading}
                         >
-                            {isSubmitting ? 'Creating account...' : 'Sign Up'}
+                            {isSubmitting || actionLoading ? 'Creating account...' : 'Sign Up'}
                         </button>
                     </form>
 

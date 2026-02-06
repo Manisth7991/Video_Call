@@ -13,14 +13,15 @@ const AuthContext = createContext(null);
 // Wraps the application and provides auth state
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [authLoading, setAuthLoading] = useState(true); // Initial auth check loading
+    const [actionLoading, setActionLoading] = useState(false); // Login/register action loading
     const [error, setError] = useState(null);
 
     // Check if user is already authenticated (on app load)
     // Calls /api/auth/me to verify the cookie-stored JWT
     const checkAuth = useCallback(async () => {
         try {
-            setLoading(true);
+            setAuthLoading(true);
 
             // Calls /auth/check — returns 200 always (no 401 console errors)
             // If cookie is present and valid, returns user data
@@ -36,7 +37,7 @@ export const AuthProvider = ({ children }) => {
             // Network or server error — not authenticated
             setUser(null);
         } finally {
-            setLoading(false);
+            setAuthLoading(false);
         }
     }, []);
 
@@ -50,25 +51,25 @@ export const AuthProvider = ({ children }) => {
     const register = async (userData) => {
         try {
             setError(null);
-            setLoading(true);
+            setActionLoading(true);
 
             const response = await api.post('/auth/register', userData);
 
             if (response.data.success) {
                 // Cookie is set automatically by the browser
                 setUser(response.data.user);
-                setLoading(false);
+                setActionLoading(false);
                 return { success: true };
             } else {
                 const message = response.data.message || 'Registration failed';
                 setError(message);
-                setLoading(false);
+                setActionLoading(false);
                 return { success: false, message };
             }
         } catch (err) {
             const message = err.response?.data?.message || 'Registration failed';
             setError(message);
-            setLoading(false);
+            setActionLoading(false);
             return { success: false, message };
         }
     };
@@ -78,26 +79,26 @@ export const AuthProvider = ({ children }) => {
     const login = async (credentials) => {
         try {
             setError(null);
-            setLoading(true);
+            setActionLoading(true);
 
             const response = await api.post('/auth/login', credentials);
 
             if (response.data.success) {
                 // Cookie is set automatically by the browser
                 setUser(response.data.user);
-                setLoading(false);
+                setActionLoading(false);
                 return { success: true };
             } else {
                 // API returned success: false
                 const message = response.data.message || 'Login failed';
                 setError(message);
-                setLoading(false);
+                setActionLoading(false);
                 return { success: false, message };
             }
         } catch (err) {
             const message = err.response?.data?.message || 'Login failed';
             setError(message);
-            setLoading(false);
+            setActionLoading(false);
             return { success: false, message };
         }
     };
@@ -120,9 +121,12 @@ export const AuthProvider = ({ children }) => {
     const clearError = () => setError(null);
 
     // Context value
+    // `loading` is true during initial auth check OR during login/register actions
     const value = {
         user,
-        loading,
+        loading: authLoading || actionLoading,
+        authLoading,      // Specifically for initial auth check
+        actionLoading,    // Specifically for login/register actions
         error,
         isAuthenticated: !!user,
         register,

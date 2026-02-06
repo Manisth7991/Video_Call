@@ -14,7 +14,7 @@ const Login = () => {
     const [formError, setFormError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const { login, error, clearError, loading } = useAuth();
+    const { login, error, clearError, actionLoading } = useAuth();
     const navigate = useNavigate();
 
     // Handle input changes
@@ -36,8 +36,8 @@ const Login = () => {
             return;
         }
 
-        // Prevent submission if auth is still loading (e.g., checkAuth running)
-        if (loading) {
+        // Prevent double submission if login is already in progress
+        if (actionLoading || isSubmitting) {
             return;
         }
 
@@ -105,9 +105,9 @@ const Login = () => {
                         <button
                             type="submit"
                             className="auth-button"
-                            disabled={isSubmitting || loading}
+                            disabled={isSubmitting || actionLoading}
                         >
-                            {isSubmitting ? 'Signing in...' : loading ? 'Please wait...' : 'Sign In'}
+                            {isSubmitting || actionLoading ? 'Signing in...' : 'Sign In'}
                         </button>
                     </form>
 
