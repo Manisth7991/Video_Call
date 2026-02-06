@@ -4,21 +4,12 @@ const User = require('../models/User.model');
 
 
 // Middleware to protect routes
-// Extracts JWT from httpOnly cookie OR Authorization header (fallback for cross-origin issues)
+// Extracts JWT from httpOnly cookie ONLY (single source of auth)
 
 const protect = async (req, res, next) => {
     try {
-        // Get token from httpOnly cookie first
-        let token = req.cookies.token;
-
-        // Fallback: Check Authorization header if cookie is not present
-        // This handles cross-origin cookie issues with different domains
-        if (!token && req.headers.authorization) {
-            const authHeader = req.headers.authorization;
-            if (authHeader.startsWith('Bearer ')) {
-                token = authHeader.substring(7); // Remove 'Bearer ' prefix
-            }
-        }
+        // Get token from httpOnly cookie (single source of auth)
+        const token = req.cookies.token;
 
         if (!token) {
             return res.status(401).json({
@@ -69,12 +60,18 @@ const protect = async (req, res, next) => {
 
 // Middleware to verify socket authentication
 // Used for Socket.IO connections
+// 100% COOKIE-BASED - reads token from cookies only
 
 const socketAuth = async (socket, next) => {
     try {
-        // Get token from socket handshake (cookies are sent automatically)
-        const token = socket.handshake.auth.token ||
-            socket.handshake.headers.cookie?.split('token=')[1]?.split(';')[0];
+        // Get token from cookies sent in socket handshake
+        const cookies = socket.handshake.headers.cookie;
+        let token = null;
+
+        if (cookies) {
+            const tokenMatch = cookies.match(/token=([^;]+)/);
+            token = tokenMatch ? tokenMatch[1] : null;
+        }
 
         if (!token) {
             return next(new Error('Authentication required'));

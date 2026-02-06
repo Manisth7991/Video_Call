@@ -1,9 +1,10 @@
 // Authentication Context
 // Manages user authentication state across the application
 // Provides login, register, logout functions and user state
+// 100% httpOnly cookie-based authentication
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import api, { setAuthToken, removeAuthToken } from '../api/axios';
+import api from '../api/axios';
 
 // Create the context
 const AuthContext = createContext(null);
@@ -16,36 +17,23 @@ export const AuthProvider = ({ children }) => {
     const [error, setError] = useState(null);
 
     // Check if user is already authenticated (on app load)
-    // Calls /api/auth/me to verify the cookie-stored JWT or Authorization header
+    // Calls /api/auth/me to verify the cookie-stored JWT
     const checkAuth = useCallback(async () => {
         try {
             setLoading(true);
 
-            // Check if there's a token in localStorage first
-            const token = localStorage.getItem('auth_token');
-
-            // Only make the API call if a token exists
-            // This prevents 401 errors on first visit
-            if (!token) {
-                setUser(null);
-                setLoading(false);
-                return;
-            }
-
-            // Try the API call with the token
-            const response = await api.get('/auth/me');
+            // Calls /auth/check — returns 200 always (no 401 console errors)
+            // If cookie is present and valid, returns user data
+            // If no cookie, returns { success: false } with status 200
+            const response = await api.get('/auth/check');
 
             if (response.data.success) {
                 setUser(response.data.user);
-                // CRITICAL: Store token from response for future cross-origin requests
-                // This ensures localStorage gets populated for users who only had cookies
-                if (response.data.token) {
-                    setAuthToken(response.data.token);
-                }
+            } else {
+                setUser(null);
             }
         } catch (err) {
-            // Not authenticated - clear token and user state
-            removeAuthToken();
+            // Network or server error — not authenticated
             setUser(null);
         } finally {
             setLoading(false);
@@ -67,15 +55,11 @@ export const AuthProvider = ({ children }) => {
             const response = await api.post('/auth/register', userData);
 
             if (response.data.success) {
-                // Store the token in localStorage as fallback for cross-origin cookie issues
-                if (response.data.token) {
-                    setAuthToken(response.data.token);
-                }
+                // Cookie is set automatically by the browser
                 setUser(response.data.user);
                 setLoading(false);
                 return { success: true };
             } else {
-                // API returned success: false
                 const message = response.data.message || 'Registration failed';
                 setError(message);
                 setLoading(false);
@@ -99,10 +83,7 @@ export const AuthProvider = ({ children }) => {
             const response = await api.post('/auth/login', credentials);
 
             if (response.data.success) {
-                // Store the token in localStorage as fallback for cross-origin cookie issues
-                if (response.data.token) {
-                    setAuthToken(response.data.token);
-                }
+                // Cookie is set automatically by the browser
                 setUser(response.data.user);
                 setLoading(false);
                 return { success: true };
@@ -122,14 +103,14 @@ export const AuthProvider = ({ children }) => {
     };
 
     // Logout user
-    // Clears the httpOnly cookie on the server and localStorage token
+    // Clears the httpOnly cookie on the server
     const logout = async () => {
         try {
             await api.post('/auth/logout');
         } catch (err) {
             console.error('Logout error:', err);
         } finally {
-            removeAuthToken(); // Clear the localStorage token
+            // Cookie is cleared by server
             setUser(null);
             setError(null);
         }

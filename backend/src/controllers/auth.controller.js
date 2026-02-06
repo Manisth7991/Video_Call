@@ -30,18 +30,16 @@ const register = async (req, res) => {
             password,
         });
 
-        // Generate JWT token with user info for fallback auth
+        // Generate JWT token
         const token = generateToken(user._id, user.name, user.email);
 
         // Set token in httpOnly cookie
         setTokenCookie(res, token);
 
-        // Send response (without password)
-        // Include token in response body as fallback for cross-origin cookie issues
+        // Send response (token is in httpOnly cookie, not in body)
         res.status(201).json({
             success: true,
             message: 'Registration successful',
-            token, // Token for localStorage fallback
             user: {
                 id: user._id,
                 name: user.name,
@@ -101,18 +99,16 @@ const login = async (req, res) => {
             });
         }
 
-        // Generate JWT token with user info for fallback auth
+        // Generate JWT token
         const token = generateToken(user._id, user.name, user.email);
 
         // Set token in httpOnly cookie
         setTokenCookie(res, token);
 
-        // Send response
-        // Include token in response body as fallback for cross-origin cookie issues
+        // Send response (token is in httpOnly cookie, not in body)
         res.status(200).json({
             success: true,
             message: 'Login successful',
-            token, // Token for localStorage fallback
             user: {
                 id: user._id,
                 name: user.name,
@@ -161,16 +157,12 @@ const getMe = async (req, res) => {
             });
         }
 
-        // Generate a fresh token for the user
-        // This ensures localStorage gets updated for cross-origin cookie fallback
+        // Generate a fresh token and refresh the cookie
         const token = generateToken(user._id, user.name, user.email);
-
-        // Also refresh the cookie
         setTokenCookie(res, token);
 
         res.status(200).json({
             success: true,
-            token, // Include token for localStorage fallback
             user: {
                 id: user._id,
                 name: user.name,
@@ -187,9 +179,47 @@ const getMe = async (req, res) => {
     }
 };
 
+// Check authentication status (no 401 — always returns 200)
+// Used on app load to silently check if user is logged in
+const checkAuth = async (req, res) => {
+    try {
+        const token = req.cookies.token;
+
+        if (!token) {
+            return res.status(200).json({ success: false, user: null });
+        }
+
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await User.findById(decoded.id);
+
+        if (!user) {
+            return res.status(200).json({ success: false, user: null });
+        }
+
+        // Refresh the cookie
+        const newToken = generateToken(user._id, user.name, user.email);
+        setTokenCookie(res, newToken);
+
+        res.status(200).json({
+            success: true,
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                createdAt: user.createdAt,
+            },
+        });
+    } catch (error) {
+        // Token invalid/expired — not an error, just not authenticated
+        res.status(200).json({ success: false, user: null });
+    }
+};
+
 module.exports = {
     register,
     login,
     logout,
     getMe,
+    checkAuth,
 };

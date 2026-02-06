@@ -24,6 +24,8 @@ const generateToken = (userId, userName = '', userEmail = '') => {
 // This is more secure than storing in localStorage/sessionStorage
 // because JavaScript cannot access httpOnly cookies (prevents XSS attacks)
 //
+// For cross-domain (Vercel → Render), requires sameSite:'none' + secure:true
+//
 // @param {Object} res - Express response object
 // @param {string} token - JWT token
 const setTokenCookie = (res, token) => {
@@ -31,24 +33,24 @@ const setTokenCookie = (res, token) => {
 
     res.cookie('token', token, {
         httpOnly: true,          // Prevents JavaScript access (XSS protection)
-        secure: isProduction,    // HTTPS only in production
-        sameSite: isProduction ? 'none' : 'lax', // 'none' required for cross-origin cookies
+        secure: isProduction,    // HTTPS only in production; false for localhost (HTTP)
+        sameSite: isProduction ? 'none' : 'lax', // 'none' for cross-domain in production
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
         path: '/',               // Cookie available across all routes
     });
 };
 
 // Clear JWT token cookie (for logout)
+// Must use EXACT same settings as setTokenCookie for proper deletion
 // @param {Object} res - Express response object
 const clearTokenCookie = (res) => {
     const isProduction = process.env.NODE_ENV === 'production';
 
-    res.cookie('token', '', {
+    res.clearCookie('token', {
         httpOnly: true,
-        secure: isProduction,
-        sameSite: isProduction ? 'none' : 'lax', // 'none' required for cross-origin cookies
-        maxAge: 0,              // Immediately expire the cookie
-        path: '/',
+        secure: isProduction,    // Must match setTokenCookie
+        sameSite: isProduction ? 'none' : 'lax', // Must match setTokenCookie
+        path: '/'
     });
 };
 

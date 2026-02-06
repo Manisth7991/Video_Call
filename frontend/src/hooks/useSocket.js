@@ -1,5 +1,6 @@
 // useSocket Hook
 // Manages Socket.IO connection for real-time signaling
+// 100% COOKIE-BASED - authentication via cookies only
 //
 // SOCKET LIFECYCLE:
 // 1. Create connection on mount with authentication
@@ -14,9 +15,8 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
-import { getAuthToken } from '../api/axios';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || '';
 
 const useSocket = () => {
     const [isConnected, setIsConnected] = useState(false);
@@ -28,12 +28,9 @@ const useSocket = () => {
     useEffect(() => {
         isMountedRef.current = true;
 
-        // Get the auth token for socket authentication
-        const token = getAuthToken();
-
-        // Create socket connection with credentials
+        // Create socket connection — cookies sent automatically
         const socket = io(SOCKET_URL, {
-            withCredentials: true, // Send cookies for authentication
+            withCredentials: true, // Send httpOnly cookies for authentication
             transports: ['websocket', 'polling'], // Prefer WebSocket
             reconnection: true,
             reconnectionAttempts: 5,
@@ -43,10 +40,6 @@ const useSocket = () => {
             // Disconnect if ping not received
             pingTimeout: 5000,
             pingInterval: 25000,
-            // Pass token via auth for cross-origin fallback
-            auth: {
-                token: token,
-            },
         });
 
         socketRef.current = socket;
